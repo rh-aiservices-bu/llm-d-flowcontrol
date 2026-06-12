@@ -1,0 +1,16 @@
+{{- if and (eq .Values.deploymentMethod "llmd") (eq .Values.llmd.flowControl true) }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: llm-viewer
+rules:
+  - verbs:
+      - get
+      - watch
+      - list
+    apiGroups:
+      - serving.kserve.io
+    resources:
+      - llminferenceservices
+{{- end }}

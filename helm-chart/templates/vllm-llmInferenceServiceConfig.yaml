@@ -1,0 +1,15 @@
+{{- if eq .Values.deploymentMethod "vllm" }}
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceServiceConfig
+metadata:
+  name: {{ .Values.modelDeployment.modelName }}
+  namespace: {{ .Values.vllm.namespace }}
+spec:
+  model:
+    uri: ''
+  template:
+    containers:
+      - name: main
+        image: 'registry.redhat.io/rhaii/vllm-cuda-rhel9@sha256:ad06abf3bb5235ebb5b2df84cd1b9fd09e823f0ff2eebfc82bb4590275ccfe0b'
+        resources: {}
+{{- end }}

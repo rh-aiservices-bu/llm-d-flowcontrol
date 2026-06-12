@@ -1,0 +1,21 @@
+deploymentMethod: llmd
+modelDeployment:
+  modelName: qwen
+  modelUri: hf://Qwen/Qwen3-0.6b
+  replicas: 4
+
+vllm:
+  namespace: demo-vllm
+
+llmd:
+  namespace: demo-llmd
+  flowControl: true
+
+# Only relevant if llmd.flowControl is enabled.
+serviceAccounts:
+  - name: llm-inferencer
+    namespace: sa-high-prio
+    priority: 100
+  - name: llm-inferencer
+    namespace: sa-low-prio
+    priority: 10

@@ -1,0 +1,16 @@
+{{- if and (eq .Values.deploymentMethod "llmd") (eq .Values.llmd.flowControl true) }}
+{{- range .Values.serviceAccounts }}
+---
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferenceObjective
+metadata:
+  name: {{ .namespace }}
+  namespace: {{ $.Values.llmd.namespace }}
+spec:
+  poolRef:
+    group: inference.networking.k8s.io
+    kind: InferencePool
+    name: {{ $.Values.modelDeployment.modelName }}-inference-pool
+  priority: {{ .priority }}
+{{- end }}
+{{- end }}

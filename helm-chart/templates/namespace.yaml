@@ -1,0 +1,21 @@
+{{- if eq .Values.deploymentMethod "vllm" }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    openshift.io/display-name: "vLLM Deployment"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+  name: {{ .Values.vllm.namespace }}
+{{- else if eq .Values.deploymentMethod "llmd" }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    openshift.io/display-name: "LLM-D Deployment"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+  name: {{ .Values.llmd.namespace }}
+{{- end }}

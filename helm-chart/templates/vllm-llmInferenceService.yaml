@@ -1,0 +1,31 @@
+{{- if eq .Values.deploymentMethod "vllm" }}
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: {{ .Values.modelDeployment.modelName }}
+  namespace: {{ .Values.vllm.namespace }}
+  annotations:
+    security.opendatahub.io/enable-auth: "false"
+spec:
+  baseRefs:
+    - name: {{ .Values.modelDeployment.modelName }}
+  model:
+    name: {{ .Values.modelDeployment.modelName }}
+    uri: '{{ .Values.modelDeployment.modelUri }}'
+  replicas: {{ .Values.modelDeployment.replicas }}
+  router:
+    gateway: {}
+    route: {}
+  template:
+    containers:
+      - name: main
+        resources:
+          limits:
+            cpu: '4'
+            memory: 8Gi
+            nvidia.com/gpu: '1'
+          requests:
+            cpu: '4'
+            memory: 8Gi
+            nvidia.com/gpu: '1'
+{{- end }}
