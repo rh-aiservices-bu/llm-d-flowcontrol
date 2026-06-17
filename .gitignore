@@ -3,3 +3,25 @@ site/
 .DS_Store
 .vscode/
 CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Test results
+results/*.json
+results/*.csv
+trace_results/*
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~

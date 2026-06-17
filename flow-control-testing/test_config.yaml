@@ -1,0 +1,46 @@
+# Alternating Priority Flow Control Test Configuration
+
+# LLM Endpoint Configuration
+endpoint:
+  # Service account namespaces
+  sa_namespace_high: sa-high-prio
+  sa_namespace_low: sa-low-prio
+
+  # LLMInferenceService namespace and name
+  llmis_namespace: demo-llmd
+  llmis_name: qwen
+
+  token_duration: 1h
+
+# Test Configuration
+test:
+  # Total concurrent workers (split 50/50 high/low priority)
+  concurrent_requests: 130
+
+  # Duration to run the test (seconds)
+  duration: 240
+
+  # Stagger delay between worker starts (seconds)
+  # This prevents overwhelming the auth service with simultaneous requests
+  worker_stagger_delay: 0.100  # 100ms between each worker start
+
+  # Queue metrics monitoring
+  monitor_queue_metrics: true
+  queue_check_interval: 10  # seconds
+
+  # Prompt configuration
+  use_diverse_prompts: true
+  num_diverse_prompts: 50
+
+# Request Configuration
+request:
+  temperature: 0.7
+  max_tokens: 1500  # Same for both priorities
+  top_p: 0.9
+  timeout: 300
+  stream: true
+
+# Output Configuration
+output:
+  output_dir: trace_results
+  collect_cluster_metrics: true
