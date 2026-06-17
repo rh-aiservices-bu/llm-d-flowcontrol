@@ -87,25 +87,32 @@ When flow control is working:
 📊 PRIORITY COMPARISON
 ================================================================================
 
+📈 Request Volume:
+  High-priority: 130 requests
+  Low-priority: 100 requests
+
 ✅ Success Rates:
-  High-priority: 77.4%
-  Low-priority: 50.0%
-  Difference: +27.4%
+  High-priority: 100.0%
+  Low-priority: 71.0%
+  Difference: +29.0%
 
 ⏱️  End-to-End Latency (successful requests):
-  High-priority P95: 206.17s
-  Low-priority P95: 276.94s
-  Improvement: +25.6%
+  High-priority mean: 142.39s
+  Low-priority mean: 144.20s
+  Difference: +1.3% 
+
+  High-priority P95: 167.38s
+  Low-priority P95: 162.17s
+  Difference: -3.2%
 
 ⚡ Time to First Token (successful requests):
-  High-priority mean: 45.2s
-  Low-priority mean: 62.3s
-  Improvement: +27.4%
+  High-priority mean: 3.42s
+  Low-priority mean: 5.56s
+  Difference: +38.5% (1.6x faster)
 
 📈 Summary:
-  ✅ High-priority achieved 27.4% higher success rate
-  ✅ High-priority P95 latency 25.6% better
-  ✅ High-priority TTFT 27.4% better
+  ✅ High-priority achieved 29.0% higher success rate
+  ✅ High-priority TTFT 38.5% better
 ```
 
 ## OpenShift Metrics
