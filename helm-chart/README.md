@@ -10,10 +10,13 @@ This chart deploys LLM inference services with support for two deployment method
 
 ## Prerequisites
 
-- Kubernetes cluster with KServe installed
-- GPU nodes available (NVIDIA GPUs)
-- OpenShift AI Gateway Controller (for gateway resources)
-- Helm 3.x
+The helm chart was developed in the following environment.
+
+- Single Node OpenShift 4.20.0
+- Red Hat Connectivity Link 1.3.4
+- Red Hat OpenShift AI 3.4.0
+
+The SNO instance was on an AWS g6.12xlarge instance, with 4x NVIDIA L4s available. 
 
 ## Installation
 
@@ -35,8 +38,8 @@ helm install <release-name> . -f custom-values.yaml
 |-----------|-------------|---------|
 | `deploymentMethod` | Deployment method: `vllm` or `llmd` | `llmd` |
 | `modelDeployment.modelName` | Name of the model to deploy | `qwen` |
-| `modelDeployment.modelUri` | Model URI (e.g., HuggingFace model) | `hf://Qwen/Qwen3-0.6b` |
-| `modelDeployment.replicas` | Number of model replicas | `4` |
+| `modelDeployment.modelUri` | Model URI (e.g., HuggingFace model) | `hf://Qwen/Qwen3.5-4b` |
+| `modelDeployment.replicas` | Number of model replicas | `1` |
 
 ### vLLM Configuration
 
@@ -110,27 +113,11 @@ llmd:
 ```
 
 **Features:**
-- Priority-based request scheduling
-- Flow control with configurable TTL and max bytes
-- Multiple priority bands with fairness policies
-- Authentication enabled (when flowControl is true)
+- Priority-based request scheduling.
+- Flow control with configurable max TTL and max queue size.
+- Multiple priority bands with fairness policies.
+- Authentication enabled (when flowControl is `true`)
 - Advanced endpoint picker with multiple scoring plugins
-- Saturation detection and queueing
-
-**Flow Control Configuration:**
-- **Default Request TTL:** 10 seconds
-- **Max Bytes:** 1 GB
-- **Ordering Policy:** First-Come-First-Served (FCFS)
-- **Fairness Policy:** Round-robin
-- **Saturation Thresholds:**
-  - KV Cache utilization: 80%
-  - Metrics staleness: 200ms
-  - Queue depth: 5
-
-**Scoring Plugins:**
-- Queue scorer (weight: 2)
-- Active request scorer (weight: 2)
-- Prefix cache scorer (weight: 3)
 
 ## Resources Created
 
@@ -235,7 +222,7 @@ Note: Depending on your configuration, you may need to manually clean up namespa
 ### Flow control not working
 - Verify `llmd.flowControl` is set to `true`
 - Check that service accounts and InferenceObjectives are created
-- Review authentication settings
+- Review RHCL resources, such as the Kuadrant.
 
 ### Model fails to load
 - Check model URI is correct and accessible

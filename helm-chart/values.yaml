@@ -1,8 +1,8 @@
 deploymentMethod: llmd
 modelDeployment:
   modelName: qwen
-  modelUri: hf://Qwen/Qwen3-0.6b
-  replicas: 4
+  modelUri: hf://Qwen/Qwen3.5-4B
+  replicas: 1
 
 vllm:
   namespace: demo-vllm

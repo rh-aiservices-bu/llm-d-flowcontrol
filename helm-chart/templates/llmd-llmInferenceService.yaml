@@ -29,7 +29,7 @@ spec:
           featureGates:
             - flowControl
           flowControl:
-            defaultRequestTTL: 10s
+            defaultRequestTTL: 60s
             maxBytes: 1073741824
             priorityBands:
               - fairnessPolicyRef: round-robin-fairness-policy
@@ -51,10 +51,6 @@ spec:
             - type: fcfs-ordering-policy
             - type: round-robin-fairness-policy
           {{- end }}
-          saturationDetector:
-            kvCacheUtilThreshold: 0.8
-            metricsStalenessThreshold: 200ms
-            queueDepthThreshold: 5
           schedulingProfiles:
             - name: default
               plugins:
