@@ -29,11 +29,11 @@ A brief deployment guide to quickly demonstrate the flow control capabilities of
 
 ### Prerequisites
 
-- >= 4.20.0 OpenShift Cluster with at least 1 GPU available.
+- `>=4.20.0` OpenShift Cluster with at least 1 GPU available.
 - `oc` CLI authenticated to the cluster, with `cluster-admin` access.
 - The following operators installed and configured:
-    - Red Hat OpenShift AI >=3.4.0
-    - Red Hat Connectivity Link >=1.3.3
+    - Red Hat OpenShift AI `>=3.4.0`
+    - Red Hat Connectivity Link `>=1.3.3`
 
 ### Step 1: Deploy model
 
