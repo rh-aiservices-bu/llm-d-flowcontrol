@@ -11,17 +11,17 @@ Further reading on the topic can be found in the llm-d github repository.
 
 ## Repository Components
 
-### Helm Chart
+### `helm-chart`
 
 Deploys LLM-D with optional flow control capabilities on OpenShift. Creates either a standard vLLM backend or an LLM-D deployment with priority-based request queuing. When flow control is enabled, configures service accounts with different priority levels (high/low) and corresponding InferenceObjective resources to demonstrate prioritized inference request handling. See [helm-chart/README.md](helm-chart/README.md) for detailed documentation.
 
-### send-inference-request.sh
-
-Convenience script to test LLMInferenceService deployments. Takes two arguments: service account namespace and LLMInferenceService namespace. Automatically discovers the deployed service, generates a short-lived token, and sends a test chat completion request to verify the deployment is working. If flow control is enabled on the deployment, you can ensure it is working in the `*router-scheduler*` pod in the namespace the model is deployed in. Look for "flowPriority".
-
-### flow-control-testing
+### `flow-control-testing`
 
 Demonstrates flow control effectiveness by saturating a model with concurrent requests split between high-priority and low-priority workers. See [flow-control-testing/README.md](flow-control-testing/README.md) for detailed documentation.
+
+### `send-inference-request.sh`
+
+Convenience script to test LLMInferenceService deployments. Takes two arguments: service account namespace and LLMInferenceService namespace. Automatically discovers the deployed service, generates a short-lived token, and sends a test chat completion request to verify the deployment is working. If flow control is enabled on the deployment, you can ensure it is working in the `*router-scheduler*` pod in the namespace the model is deployed in. Look for "flowPriority".
 
 ## Quickstart
 
