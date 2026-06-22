@@ -4,6 +4,8 @@ kind: LLMInferenceServiceConfig
 metadata:
   name: {{ .Values.modelDeployment.modelName }}
   namespace: {{ .Values.vllm.namespace }}
+  labels:
+    app: vllm-demo
 spec:
   model:
     uri: ''

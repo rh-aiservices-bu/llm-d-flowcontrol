@@ -6,6 +6,8 @@ kind: InferenceObjective
 metadata:
   name: {{ .namespace }}
   namespace: {{ $.Values.llmd.namespace }}
+  labels:
+    app: llmd-demo
 spec:
   poolRef:
     group: inference.networking.k8s.io

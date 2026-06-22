@@ -11,6 +11,8 @@ metadata:
     security.opendatahub.io/enable-auth: 'false'
     {{- end }}
     serving.kserve.io/stop: 'false'
+  labels:
+    app: llmd-demo
   name: {{ .Values.modelDeployment.modelName }}
   namespace: {{ .Values.llmd.namespace }}
 spec:

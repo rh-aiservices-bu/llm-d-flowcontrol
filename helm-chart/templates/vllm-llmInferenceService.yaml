@@ -6,6 +6,8 @@ metadata:
   namespace: {{ .Values.vllm.namespace }}
   annotations:
     security.opendatahub.io/enable-auth: "false"
+  labels:
+    app: vllm-demo
 spec:
   baseRefs:
     - name: {{ .Values.modelDeployment.modelName }}

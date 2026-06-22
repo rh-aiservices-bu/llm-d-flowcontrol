@@ -7,6 +7,7 @@ metadata:
     openshift.io/display-name: "vLLM Deployment"
   labels:
     openshift.io/cluster-monitoring: "true"
+    app: vllm-demo
   name: {{ .Values.vllm.namespace }}
 {{- else if eq .Values.deploymentMethod "llmd" }}
 ---
@@ -17,5 +18,6 @@ metadata:
     openshift.io/display-name: "LLM-D Deployment"
   labels:
     openshift.io/cluster-monitoring: "true"
+    app: llmd-demo
   name: {{ .Values.llmd.namespace }}
 {{- end }}

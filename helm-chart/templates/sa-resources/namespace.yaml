@@ -5,5 +5,7 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{ .namespace }}
+  labels:
+    app: llmd-demo
 {{- end }}
 {{- end }}
