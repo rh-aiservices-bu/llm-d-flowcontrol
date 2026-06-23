@@ -8,19 +8,16 @@ to demonstrate flow control queue behavior under load.
 
 import argparse
 import asyncio
-import csv
 import json
 import logging
-import os
 import statistics
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Any
-import re
 import aiohttp
 import yaml
 
@@ -258,230 +255,19 @@ class LLMClient:
         return metric
 
 
-def extract_router_logs(config: Dict[str, Any], request_id: str, start_time: float,
-                       end_time: float) -> Optional[str]:
-    """Extract router pod logs for a specific request ID"""
-    try:
-        router_ns = config['endpoint']['router_pod_namespace']
-        router_pattern = config['endpoint']['router_pod_pattern']
-
-        # Find router pod
-        result = subprocess.run(
-            ['oc', 'get', 'pods', '-n', router_ns, '-o', 'name'],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-
-        pods = result.stdout.strip().split('')
-        router_pod = None
-        for pod in pods:
-            if re.search(router_pattern, pod):
-                router_pod = pod.replace('pod/', '')
-                break
-
-        if not router_pod:
-            logger.warning(f"Could not find router pod matching pattern: {router_pattern}")
-            return None
-
-        logger.info(f"Extracting logs from router pod: {router_pod}")
-
-        # Calculate time window
-        context_seconds = config['trace'].get('log_context_seconds', 10)
-        since_time = datetime.fromtimestamp(start_time - context_seconds)
-
-        # Extract logs since start time
-        result = subprocess.run(
-            ['oc', 'logs', router_pod, '-n', router_ns,
-             f'--since-time={since_time.isoformat()}Z'],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        all_logs = result.stdout
-
-        # Filter logs containing the request ID
-        matching_lines = []
-        for line in all_logs.split(''):
-            if request_id in line:
-                matching_lines.append(line)
-
-        if matching_lines:
-            logger.info(f"Found {len(matching_lines)} log lines for request {request_id}")
-            return '\n'.join(matching_lines)
-        else:
-            logger.warning(f"No logs found for request {request_id}")
-            return None
-
-    except subprocess.TimeoutExpired:
-        logger.error(f"Timeout extracting logs for request {request_id}")
-        return None
-    except Exception as e:
-        logger.error(f"Error extracting logs for request {request_id}: {e}")
-        return None
 
 
 def generate_baseline_prompts(config: Dict[str, Any]) -> List[str]:
-    """Generate diverse, long prompts for baseline load to saturate KV cache"""
-    baseline_config = config.get('baseline', {})
-
-    if not baseline_config.get('use_diverse_prompts', False):
-        # Use simple prompts
-        return [
-            "Explain microservices architecture.",
-            "Write about Python async programming.",
-            "Describe REST API security best practices.",
-            "Compare SQL and NoSQL databases.",
-            "Explain Java garbage collection.",
-        ]
-
-    num_prompts = baseline_config.get('num_diverse_prompts', 50)
-    use_long = baseline_config.get('use_long_prompts', False)
-    target_tokens = baseline_config.get('baseline_prompt_tokens', 4000)
-
-    logger.info(f"Generating {num_prompts} diverse baseline prompts (long={use_long})...")
-
-    # Generate diverse topics and tasks
-    topics = [
-        "microservices", "containers", "Kubernetes", "Docker", "cloud computing", "serverless",
-        "machine learning", "deep learning", "neural networks", "transformers", "LLMs",
-        "databases", "SQL", "NoSQL", "caching", "message queues", "event streaming",
-        "web frameworks", "REST APIs", "GraphQL", "gRPC", "WebSockets",
-        "security", "authentication", "authorization", "encryption", "OAuth",
-        "testing", "CI/CD", "DevOps", "monitoring", "observability",
-        "Python", "Go", "Java", "Rust", "JavaScript", "TypeScript",
-        "data structures", "algorithms", "system design", "distributed systems",
+    """Generate simple prompts for testing"""
+    return [
+        "Explain microservices architecture.",
+        "Write about Python async programming.",
+        "Describe REST API security best practices.",
+        "Compare SQL and NoSQL databases.",
+        "Explain Java garbage collection.",
     ]
 
-    tasks = [
-        "Explain in detail how {} works",
-        "Write a comprehensive guide to {}",
-        "Describe the architecture and implementation of {}",
-        "What are the best practices for using {}",
-        "Compare different approaches to implementing {}",
-        "Analyze the performance characteristics of {}",
-        "Discuss the trade-offs when choosing {}",
-        "Provide a deep-dive tutorial on {}",
-    ]
 
-    prompts = []
-    for i in range(num_prompts):
-        topic = topics[i % len(topics)]
-        task = tasks[(i // len(topics)) % len(tasks)]
-        base_prompt = task.format(topic)
-
-        if use_long:
-            # Add context to make prompts longer and more diverse
-            # Target: ~target_tokens tokens (roughly 4 chars per token)
-            contexts = [
-                "for a production system at scale",
-                "in the context of enterprise applications",
-                "considering modern cloud-native architectures",
-                "with a focus on performance and reliability",
-                "from both theoretical and practical perspectives",
-                "including real-world examples and case studies",
-                "covering common pitfalls and how to avoid them",
-                "with emphasis on security and best practices",
-            ]
-            context = contexts[i % len(contexts)]
-
-            extras = [
-                "Include detailed code examples with explanations, architecture diagrams, and comprehensive step-by-step implementation guides.",
-                "Discuss the complete historical evolution, key milestones, current state of the art, and emerging trends in the field.",
-                "Compare exhaustively with all major alternative approaches, analyzing trade-offs, use cases, and decision criteria.",
-                "Provide extensive performance benchmarks, profiling results, optimization techniques, and tuning recommendations.",
-                "Cover comprehensive integration patterns, ecosystem tools, library choices, and interoperability considerations.",
-                "Address scalability challenges, reliability patterns, operational best practices, and production deployment strategies.",
-            ]
-            extra = extras[i % len(extras)]
-
-            # Add more filler to reach target token count (roughly 4 chars = 1 token)
-            target_chars = target_tokens * 4
-            prompt = f"{base_prompt} {context}. {extra}"
-
-            # If still too short, add more detail requirements
-            if len(prompt) < target_chars:
-                padding = [
-                    " Provide concrete examples from real-world production systems.",
-                    " Include specific metrics, benchmarks, and quantitative analysis.",
-                    " Discuss implementation details at the code and architecture level.",
-                    " Cover edge cases, failure modes, and recovery strategies.",
-                    " Explain monitoring, observability, and debugging approaches.",
-                    " Address security considerations and compliance requirements.",
-                    " Discuss testing strategies, quality assurance, and validation.",
-                    " Cover documentation, team collaboration, and knowledge sharing aspects.",
-                ]
-                for p in padding:
-                    if len(prompt) < target_chars:
-                        prompt += p
-        else:
-            prompt = base_prompt
-
-        prompts.append(prompt)
-
-    logger.info(f"Generated {len(prompts)} baseline prompts")
-    return prompts
-
-
-def collect_cluster_metrics(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Collect relevant OpenShift cluster metrics"""
-    metrics = {}
-
-    try:
-        llmis_ns = config['endpoint']['llmis_namespace']
-        llmis_name = config['endpoint']['llmis_name']
-
-        # Get pod status
-        result = subprocess.run(
-            ['oc', 'get', 'pods', '-n', llmis_ns, '-l', f'serving.kserve.io/inferenceservice={llmis_name}',
-             '-o', 'json'],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        pod_data = json.loads(result.stdout)
-        metrics['pods'] = {
-            'total': len(pod_data.get('items', [])),
-            'ready': sum(1 for pod in pod_data.get('items', [])
-                        if pod.get('status', {}).get('phase') == 'Running')
-        }
-
-        # Get resource usage if metrics-server is available
-        try:
-            result = subprocess.run(
-                ['oc', 'adm', 'top', 'pods', '-n', llmis_ns,
-                 '-l', f'serving.kserve.io/inferenceservice={llmis_name}'],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            metrics['resource_usage'] = result.stdout
-        except:
-            logger.warning("Could not collect pod resource usage (metrics-server may not be available)")
-
-
-    except Exception as e:
-        logger.error(f"Error collecting cluster metrics: {e}")
-
-    return metrics
-
-
-def get_flow_control_metrics(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Query Prometheus for flow control queue metrics"""
-    metrics = {}
-
-    try:
-        # Query Prometheus for queue sizes and saturation
-        # This is a placeholder - actual implementation would query Prometheus API
-        # For now, just return empty dict to avoid blocking
-        pass
-    except Exception as e:
-        logger.debug(f"Error querying flow control metrics: {e}")
-
-    return metrics
 
 
 
@@ -510,27 +296,6 @@ async def run_alternating_priority_test(client: LLMClient, prompts: List[str], d
     low_priority_metrics = []
     lock = asyncio.Lock()
 
-    # Queue monitoring task
-    async def queue_monitor():
-        """Periodically check and log queue metrics"""
-        if not config or not config.get('test', {}).get('monitor_queue_metrics', False):
-            return
-
-        interval = config.get('test', {}).get('queue_check_interval', 10)
-
-        while time.time() < end_time:
-            await asyncio.sleep(interval)
-
-            # Query Prometheus for queue metrics
-            try:
-                metrics = get_flow_control_metrics(config)
-                if metrics:
-                    logger.info(f"📊 Queue Status (elapsed: {time.time() - start_time:.0f}s):")
-                    logger.info(f"  Priority 100 (high) queue: {metrics.get('queue_size_priority_100', 'N/A')}")
-                    logger.info(f"  Priority 10 (low) queue: {metrics.get('queue_size_priority_10', 'N/A')}")
-                    logger.info(f"  Pool saturation: {metrics.get('pool_saturation', 'N/A')}")
-            except Exception as e:
-                logger.debug(f"Queue monitoring error: {e}")
 
     async def worker(worker_id: int):
         nonlocal request_counter
@@ -570,12 +335,10 @@ async def run_alternating_priority_test(client: LLMClient, prompts: List[str], d
                 else:
                     low_priority_metrics.append(metric)
 
-    # Start queue monitoring and all workers
-    monitor_task = asyncio.create_task(queue_monitor())
+    # Start all workers
     worker_tasks = [asyncio.create_task(worker(i)) for i in range(concurrent_requests)]
 
     await asyncio.gather(*worker_tasks, return_exceptions=True)
-    monitor_task.cancel()
 
     total_time = time.time() - start_time
     high_successful = sum(1 for m in high_priority_metrics if m.success)
@@ -589,118 +352,6 @@ async def run_alternating_priority_test(client: LLMClient, prompts: List[str], d
         'high': high_priority_metrics,
         'low': low_priority_metrics
     }
-
-
-async def run_baseline_load(client: LLMClient, prompts: List[str], duration: int,
-                            concurrent_requests: int, priority: str = 'low',
-                            max_tokens_override: Optional[int] = None) -> List[RequestMetrics]:
-    """Run baseline load and collect metrics
-
-    Workers are staggered to avoid overwhelming auth service.
-    Each worker keeps exactly 1 request in flight at a time.
-    """
-    start_time = time.time()
-    logger.info(f"Starting baseline load: {concurrent_requests} concurrent workers for {duration}s")
-
-    end_time = start_time + duration
-    request_counter = 0
-    metrics_list = []
-    lock = asyncio.Lock()
-
-    async def baseline_worker(worker_id: int):
-        nonlocal request_counter
-
-        # Stagger worker starts to avoid auth service overload
-        stagger_delay = config.get('test', {}).get('worker_stagger_delay', 0.100)
-        await asyncio.sleep(worker_id * stagger_delay)
-
-        while time.time() < end_time:
-            # Get next prompt
-            async with lock:
-                current_request = request_counter
-                request_counter += 1
-
-            prompt = prompts[current_request % len(prompts)]
-
-            metric = RequestMetrics(
-                request_id=f"baseline_{worker_id}_{current_request}",
-                request_type='baseline',
-                prompt=prompt,
-                priority=priority,
-            )
-
-            # Send request and wait for completion
-            # This ensures each worker only has 1 request in flight
-            metric = await client.send_request(metric, priority=priority,
-                                              max_tokens_override=max_tokens_override)
-
-            async with lock:
-                metrics_list.append(metric)
-
-    # Start concurrent workers
-    tasks = [asyncio.create_task(baseline_worker(i)) for i in range(concurrent_requests)]
-    await asyncio.gather(*tasks, return_exceptions=True)
-
-    total_time = time.time() - start_time
-    successful = sum(1 for m in metrics_list if m.success)
-    logger.info(f"Baseline complete: {len(metrics_list)} requests, {successful} successful ({successful/len(metrics_list)*100:.1f}%)")
-    return metrics_list
-
-
-async def run_trace_request(client: LLMClient, config: Dict[str, Any], prompt: str,
-                            request_num: int, output_dir: Path) -> Dict[str, Any]:
-    """Run a single trace request and collect all diagnostics"""
-    request_id = f"trace_{request_num}_{int(time.time())}"
-
-    logger.info(f"{'='*80}")
-    logger.info(f"Trace Request #{request_num}: {request_id}")
-    logger.info(f"{'='*80}")
-
-    metric = RequestMetrics(
-        request_id=request_id,
-        request_type='trace',
-        prompt=prompt,
-        priority='high',
-    )
-
-    # Send request
-    metric = await client.send_request(metric, priority='high')
-
-    # Extract router logs
-    router_logs = None
-    if config['trace'].get('extract_router_logs', True) and metric.success:
-        router_logs = extract_router_logs(config, request_id, metric.start_time, metric.end_time)
-
-    # Collect diagnostics
-    diagnostics = {
-        'request_id': request_id,
-        'request_num': request_num,
-        'timestamp': datetime.fromtimestamp(metric.start_time).isoformat(),
-        'metrics': metric.to_dict(),
-        'router_logs': router_logs,
-        'response_headers': metric.response_headers,
-    }
-
-    # Save individual trace file
-    if config['output'].get('save_per_request_details', True):
-        trace_file = output_dir / f"trace_{request_num:03d}_{request_id}.json"
-        with open(trace_file, 'w') as f:
-            json.dump(diagnostics, f, indent=2)
-        logger.info(f"Saved trace details to {trace_file}")
-
-    # Print summary
-    logger.info(f"Request: {request_id}")
-    logger.info(f"  Success: {metric.success}")
-    if metric.success:
-        logger.info(f"  TTFT: {metric.ttft*1000:.2f}ms")
-        logger.info(f"  E2E Latency: {metric.e2e_latency*1000:.2f}ms")
-        logger.info(f"  Tokens: {metric.tokens_received}")
-        if router_logs:
-            logger.info(f"  Router logs: {len(router_logs.split(chr(10)))} lines")
-    else:
-        logger.info(f"  Error: {metric.error}")
-
-    return diagnostics
 
 
 async def main():
@@ -741,7 +392,6 @@ async def main():
         await client.initialize()
 
         # Generate prompts
-        prompt_tokens = config['test'].get('prompt_tokens', 1500)
         prompts = generate_baseline_prompts(config)
 
         # Save prompts to file
@@ -751,10 +401,6 @@ async def main():
                 f.write(f"=== Prompt {i} ===\n")
                 f.write(f"{prompt}\n\n")
             logger.info(f"Saved {len(prompts)} prompts to {prompts_file}")
-
-            # Collect initial cluster metrics
-        logger.info("Collecting initial cluster metrics...")
-        initial_metrics = collect_cluster_metrics(config)
 
         # Run alternating priority test
         logger.info(f"{'='*80}")
@@ -777,10 +423,6 @@ async def main():
         high_priority_metrics = results['high']
         low_priority_metrics = results['low']
 
-        # Collect final cluster metrics
-        logger.info(f"Collecting final cluster metrics...")
-        final_metrics = collect_cluster_metrics(config)
-
         # Analyze results
         logger.info(f"{'='*80}")
         logger.info("TEST RESULTS")
@@ -800,23 +442,36 @@ async def main():
                 latencies = [m.e2e_latency for m in successful]
                 ttfts = [m.ttft for m in successful]
 
-                # Calculate P95
+                # Calculate P95 and P99 for latencies
                 p95 = statistics.quantiles(latencies, n=20)[18] if len(latencies) >= 20 else max(latencies)
+                p99 = statistics.quantiles(latencies, n=100)[98] if len(latencies) >= 100 else max(latencies)
+
+                # Calculate P95 and P99 for TTFT
+                p95_ttft = statistics.quantiles(ttfts, n=20)[18] if len(ttfts) >= 20 else max(ttfts)
+                p99_ttft = statistics.quantiles(ttfts, n=100)[98] if len(ttfts) >= 100 else max(ttfts)
 
                 stats_dict = {
                     'mean': statistics.mean(latencies),
                     'median': statistics.median(latencies),
                     'p95': p95,
+                    'p99': p99,
                     'min': min(latencies),
                     'max': max(latencies),
-                    'mean_ttft': statistics.mean(ttfts)
+                    'mean_ttft': statistics.mean(ttfts),
+                    'median_ttft': statistics.median(ttfts),
+                    'p95_ttft': p95_ttft,
+                    'p99_ttft': p99_ttft,
                 }
 
                 logger.info(f"  Mean E2E Latency: {stats_dict['mean']:.2f}s")
                 logger.info(f"  Median E2E Latency: {stats_dict['median']:.2f}s")
                 logger.info(f"  P95 E2E Latency: {stats_dict['p95']:.2f}s")
+                logger.info(f"  P99 E2E Latency: {stats_dict['p99']:.2f}s")
                 logger.info(f"  Range: {stats_dict['min']:.2f}s - {stats_dict['max']:.2f}s")
                 logger.info(f"  Mean TTFT: {stats_dict['mean_ttft']:.2f}s")
+                logger.info(f"  Median TTFT: {stats_dict['median_ttft']:.2f}s")
+                logger.info(f"  P95 TTFT: {stats_dict['p95_ttft']:.2f}s")
+                logger.info(f"  P99 TTFT: {stats_dict['p99_ttft']:.2f}s")
 
             if failed:
                 error_types = {}
@@ -839,13 +494,22 @@ async def main():
             low_mean = low_stats['mean']
             high_p95 = high_stats['p95']
             low_p95 = low_stats['p95']
+            high_p99 = high_stats['p99']
+            low_p99 = low_stats['p99']
 
             high_ttft = high_stats['mean_ttft']
             low_ttft = low_stats['mean_ttft']
+            high_p95_ttft = high_stats['p95_ttft']
+            low_p95_ttft = low_stats['p95_ttft']
+            high_p99_ttft = high_stats['p99_ttft']
+            low_p99_ttft = low_stats['p99_ttft']
 
             mean_improvement = ((low_mean - high_mean) / low_mean * 100)
             p95_improvement = ((low_p95 - high_p95) / low_p95 * 100)
+            p99_improvement = ((low_p99 - high_p99) / low_p99 * 100)
             ttft_improvement = ((low_ttft - high_ttft) / low_ttft * 100)
+            p95_ttft_improvement = ((low_p95_ttft - high_p95_ttft) / low_p95_ttft * 100)
+            p99_ttft_improvement = ((low_p99_ttft - high_p99_ttft) / low_p99_ttft * 100)
 
             # Success rate comparison
             high_success_rate = len(high_successful) / len(high_priority_metrics) * 100
@@ -887,6 +551,15 @@ async def main():
                 logger.info(f"  Difference: {p95_improvement:+.1f}%")
             print()
 
+            logger.info(f"  High-priority P99: {high_p99:.2f}s")
+            logger.info(f"  Low-priority P99: {low_p99:.2f}s")
+            p99_speedup = low_p99 / high_p99 if high_p99 > 0 else 1.0
+            if p99_improvement > 1:
+                logger.info(f"  Difference: {p99_improvement:+.1f}% ({p99_speedup:.1f}x faster)")
+            else:
+                logger.info(f"  Difference: {p99_improvement:+.1f}%")
+            print()
+
             logger.info(f"⚡ Time to First Token (successful requests):")
             logger.info(f"  High-priority mean: {high_ttft:.2f}s")
             logger.info(f"  Low-priority mean: {low_ttft:.2f}s")
@@ -895,6 +568,24 @@ async def main():
                 logger.info(f"  Difference: {ttft_improvement:+.1f}% ({ttft_speedup:.1f}x faster)")
             else:
                 logger.info(f"  Difference: {ttft_improvement:+.1f}%")
+            print()
+
+            logger.info(f"  High-priority P95: {high_p95_ttft:.2f}s")
+            logger.info(f"  Low-priority P95: {low_p95_ttft:.2f}s")
+            p95_ttft_speedup = low_p95_ttft / high_p95_ttft if high_p95_ttft > 0 else 1.0
+            if p95_ttft_improvement > 1:
+                logger.info(f"  Difference: {p95_ttft_improvement:+.1f}% ({p95_ttft_speedup:.1f}x faster)")
+            else:
+                logger.info(f"  Difference: {p95_ttft_improvement:+.1f}%")
+            print()
+
+            logger.info(f"  High-priority P99: {high_p99_ttft:.2f}s")
+            logger.info(f"  Low-priority P99: {low_p99_ttft:.2f}s")
+            p99_ttft_speedup = low_p99_ttft / high_p99_ttft if high_p99_ttft > 0 else 1.0
+            if p99_ttft_improvement > 1:
+                logger.info(f"  Difference: {p99_ttft_improvement:+.1f}% ({p99_ttft_speedup:.1f}x faster)")
+            else:
+                logger.info(f"  Difference: {p99_ttft_improvement:+.1f}%")
             print()
 
             logger.info(f"📈 Summary:")
@@ -932,11 +623,10 @@ async def main():
                 'success_rate_difference': (len(high_successful) / len(high_priority_metrics) - len(low_successful) / len(low_priority_metrics)) * 100 if high_priority_metrics and low_priority_metrics else 0,
                 'mean_improvement_pct': ((low_stats.get('mean', 0) - high_stats.get('mean', 0)) / low_stats.get('mean', 1) * 100) if high_stats and low_stats and low_stats.get('mean') else 0,
                 'p95_improvement_pct': ((low_stats.get('p95', 0) - high_stats.get('p95', 0)) / low_stats.get('p95', 1) * 100) if high_stats and low_stats and low_stats.get('p95') else 0,
+                'p99_improvement_pct': ((low_stats.get('p99', 0) - high_stats.get('p99', 0)) / low_stats.get('p99', 1) * 100) if high_stats and low_stats and low_stats.get('p99') else 0,
                 'ttft_improvement_pct': ((low_stats.get('mean_ttft', 0) - high_stats.get('mean_ttft', 0)) / low_stats.get('mean_ttft', 1) * 100) if high_stats and low_stats and low_stats.get('mean_ttft') else 0,
-            },
-            'cluster_metrics': {
-                'initial': initial_metrics,
-                'final': final_metrics
+                'p95_ttft_improvement_pct': ((low_stats.get('p95_ttft', 0) - high_stats.get('p95_ttft', 0)) / low_stats.get('p95_ttft', 1) * 100) if high_stats and low_stats and low_stats.get('p95_ttft') else 0,
+                'p99_ttft_improvement_pct': ((low_stats.get('p99_ttft', 0) - high_stats.get('p99_ttft', 0)) / low_stats.get('p99_ttft', 1) * 100) if high_stats and low_stats and low_stats.get('p99_ttft') else 0,
             }
         }
 
