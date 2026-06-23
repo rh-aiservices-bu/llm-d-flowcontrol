@@ -35,7 +35,7 @@ This can be done in a virtual environment if preferred.
 # Install dependencies
 pip install aiohttp pyyaml
 
-# Run test with default settings (130 workers, 240s duration)
+# Run test with default settings (120 workers, 240s duration)
 python3 flow_control_test.py
 
 # Run with custom settings
@@ -84,35 +84,50 @@ When flow control is working:
 ## Example Output
 
 ```
+ ================================================================================
 📊 PRIORITY COMPARISON
 ================================================================================
 
 📈 Request Volume:
-  High-priority: 130 requests
+  High-priority: 120 requests
   Low-priority: 100 requests
 
 ✅ Success Rates:
   High-priority: 100.0%
-  Low-priority: 71.0%
-  Difference: +29.0%
+  Low-priority: 85.0%
+  Difference: +15.0%
 
-⏱️  End-to-End Latency (successful requests):
-  High-priority mean: 142.39s
-  Low-priority mean: 144.20s
-  Difference: +1.3% 
+⏱️ End-to-End Latency (successful requests):
+  High-priority mean: 142.87s
+  Low-priority mean: 150.53s
+  Difference: +5.1% (1.1x faster)
 
-  High-priority P95: 167.38s
-  Low-priority P95: 162.17s
-  Difference: -3.2%
+  High-priority P95: 166.28s
+  Low-priority P95: 268.44s
+  Difference: +38.1% (1.6x faster)
+
+  High-priority P99: 206.44s
+  Low-priority P99: 296.87s
+  Difference: +30.5% (1.4x faster)
 
 ⚡ Time to First Token (successful requests):
-  High-priority mean: 3.42s
-  Low-priority mean: 5.56s
-  Difference: +38.5% (1.6x faster)
+  High-priority mean: 4.83s
+  Low-priority mean: 15.42s
+  Difference: +68.7% (3.2x faster)
+
+  High-priority P95: 17.46s
+  Low-priority P95: 136.56s
+  Difference: +87.2% (7.8x faster)
+
+  High-priority P99: 143.41s
+  Low-priority P99: 155.61s
+  Difference: +7.8% (1.1x faster)
 
 📈 Summary:
-  ✅ High-priority achieved 29.0% higher success rate
-  ✅ High-priority TTFT 38.5% better
+  ✅ High-priority achieved 15.0% higher success rate
+  ✅ High-priority P95 latency 38.1% better
+  ✅ High-priority TTFT 68.7% better
+  ✅ High-priority mean latency 5.1% better
 ```
 
 ## OpenShift Metrics
