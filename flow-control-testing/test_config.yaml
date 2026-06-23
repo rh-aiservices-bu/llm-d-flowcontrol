@@ -15,7 +15,7 @@ endpoint:
 # Test Configuration
 test:
   # Total concurrent workers (split 50/50 high/low priority)
-  concurrent_requests: 130
+  concurrent_requests: 120
 
   # Duration to run the test (seconds)
   duration: 240
@@ -23,14 +23,6 @@ test:
   # Stagger delay between worker starts (seconds)
   # This prevents overwhelming the auth service with simultaneous requests
   worker_stagger_delay: 0.100  # 100ms between each worker start
-
-  # Queue metrics monitoring
-  monitor_queue_metrics: true
-  queue_check_interval: 10  # seconds
-
-  # Prompt configuration
-  use_diverse_prompts: true
-  num_diverse_prompts: 50
 
 # Request Configuration
 request:
@@ -43,4 +35,3 @@ request:
 # Output Configuration
 output:
   output_dir: trace_results
-  collect_cluster_metrics: true
