@@ -35,7 +35,7 @@ This can be done in a virtual environment if preferred.
 # Install dependencies
 pip install aiohttp pyyaml
 
-# Run test with default settings (120 workers, 240s duration)
+# Run test with 'trace_config.yaml' settings (120 concurrent requests, 240s duration)
 python3 flow_control_test.py
 
 # Run with custom settings
@@ -53,12 +53,11 @@ Edit `test_config.yaml` to configure:
 ## What It Tests
 
 The script:
-1. Spawns N concurrent workers (default 130).
+1. Spawns N concurrent workers (default 120).
 2. Half send **high-priority** requests continuously.
 3. Half send **low-priority** requests continuously.
 4. Both use identical prompts and token sizes for a fair comparison.
-5. Monitors queue metrics every 10 seconds.
-6. Runs for configured duration (default 240s).
+5. Runs for configured duration (default 240s).
 
 ## Output
 
@@ -151,7 +150,7 @@ And if you mouse over the graph, you should see that predominantely the lower-pr
 
 **High timeout rate**: This occurs when the system is under too much load, either reduce `concurrent_requests` in config or decrease the request token.
 
-**No queue formation**: Double check the `inference_extension_flow_control_pool_saturation` metric to see if the pool saturation is hitting >1 regularly. If not, increase `concurrent_requests` or `max_tokens`.
+**No queue formation**: You can confirm this by looking at the `inference_extension_flow_control_queue_size` metric. If all queues remain at 0, double check the `inference_extension_flow_control_pool_saturation` metric to see if the pool saturation is hitting >1 regularly. If not, increase `concurrent_requests` or `max_tokens`.
 
 ## Files
 

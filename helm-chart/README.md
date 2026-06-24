@@ -114,7 +114,6 @@ llmd:
 
 **Features:**
 - Priority-based request scheduling.
-- Flow control with configurable max TTL and max queue size.
 - Multiple priority bands with fairness policies.
 - Authentication enabled (when flowControl is `true`)
 - Advanced endpoint picker with multiple scoring plugins

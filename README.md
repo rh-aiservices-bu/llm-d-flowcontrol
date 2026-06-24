@@ -1,5 +1,5 @@
 # llm-d-flowcontrol
-Repository to demostrate a deployment of LLM-D with flow control capabilities.
+Repository to demonstrate a deployment of LLM-D with flow control capabilities.
 
 Flow Control within llm-d, is a feature that enables intelligent request queuing. Each request is tagged with 2 headers to identify it's source (or tenant)  and it's priority. The EPP will leverage these headers to create a tuple called a `flowKey`, which is assigned a priority band. Each request is assigned a `flowKey`, and each `flowKey` represented a separate in-memory queue in the EPP. When it comes to scheduling, the EPP will traverse the queues based on 3 tiers:
 
@@ -21,7 +21,21 @@ Demonstrates flow control effectiveness by saturating a model with concurrent re
 
 ### `send-inference-request.sh`
 
-Convenience script to test LLMInferenceService deployments. Takes two arguments: service account namespace and LLMInferenceService namespace. Automatically discovers the deployed service, generates a short-lived token, and sends a test chat completion request to verify the deployment is working. If flow control is enabled on the deployment, you can ensure it is working in the `*router-scheduler*` pod in the namespace the model is deployed in. Look for "flowPriority".
+Convenience script to test LLMInferenceService deployments. Takes two arguments: service account namespace and LLMInferenceService namespace. Automatically discovers the deployed service, generates a short-lived token, and sends a test chat completion request to verify the deployment is working. If flow control is enabled on the deployment, you can ensure it is working in the `*router-scheduler*` pod in the namespace the model is deployed in, and looking for a flowPriority value other than '0'. 
+
+i.e.,
+
+```
+$ oc get pods -n demo-llmd 
+
+NAME                                            READY   STATUS                     RESTARTS   AGE
+qwen-kserve-79c7cb4bf-cwjgc                     1/1     Running                    0          144m
+qwen-kserve-router-scheduler-55fbfff56b-28hr2   2/2     Running                    2          21h
+
+$ oc logs -n demo-llmd qwen-kserve-router-scheduler-55fbfff56b-28hr2 | grep flowPriority | tail -n 1
+
+{"level":"Level(-4)","ts":"2026-06-24T11:05:03Z","logger":"flow-controller.sweepFinalizedItems","caller":"internal/processor.go:435","msg":"Swept finalized items and released capacity.","shardID":"shard-0000","flowKey":"https://kubernetes.default.svc:100","flowID":"https://kubernetes.default.svc","flowPriority":100,"count":0}
+```
 
 ## Quickstart
 
@@ -41,7 +55,7 @@ This is just a case of running the helm-chart with the default values.
 
 ```bash
 cd helm-chart
-helm install llmd-fc . -f values.yaml
+helm install llmd-fc .
 ```
 
 This will start running an instance of the Qwen3.5-4B in the `demo-llmd` namespace. It will also create a couple of projects, service accounts and clusterrolebindings, so we can send requests from different namespaces.
@@ -53,7 +67,7 @@ The test will, by default, send requests to the `llmInferenceService` object in 
 ```bash
 cd flow-control-testing
 pip install aiohttp pyyaml
-./flow_control_test.py
+python3 flow_control_test.py
 ```
 
 The script will create a directory called "trace_results", in which, information about each of the runs will be stored. You can retrieve the prompts that were used in the requests, the requests and outputs themselves, and the summary information of the run. This summary information will also be presented at the end, looking similiar to [this](https://github.com/rh-aiservices-bu/llm-d-flowcontrol/tree/main/flow-control-testing#example-output).
