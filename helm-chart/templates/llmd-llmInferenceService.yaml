@@ -52,6 +52,10 @@ spec:
           {{- if eq .Values.llmd.flowControl true }}  
             - type: fcfs-ordering-policy
             - type: round-robin-fairness-policy
+          saturationDetector:
+            kvCacheUtilThreshold: 0.8
+            metricsStalenessThreshold: 200ms
+            queueDepthThreshold: 5
           {{- end }}
           schedulingProfiles:
             - name: default
